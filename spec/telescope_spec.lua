@@ -1,4 +1,5 @@
-local telescope = require "telescope"
+
+local telescope = NPL.load("telescope")
 
 describe("The Telescope Test Framework", function()
 

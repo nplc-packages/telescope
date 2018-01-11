@@ -1,4 +1,5 @@
-require 'telescope'
+
+NPL.load("telescope")
 
 local i = 0
 

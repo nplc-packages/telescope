@@ -1,10 +1,6 @@
-#!/usr/bin/env lua
-local telescope = require 'telescope'
-
-pcall(require, "luarocks.require")
-pcall(require, "shake")
-
-package.path = "./?.lua;" .. package.path
+#!/usr/bin/env nplc
+NPL.load_package("telescope")
+local telescope = NPL.load("telescope")
 
 local function luacov_report()
   local luacov = require("luacov.stats")
@@ -61,7 +57,6 @@ local function luacov_report()
 
   for _, filename in ipairs(names) do
      if string.match(filename, "/luacov/") or
-        string.match(filename, "/luarocks/") or
         string.match(filename, "/tsc$")
      then
        break
@@ -164,7 +159,6 @@ Options:
   -c      --luacov          Output a coverage file using Luacov (http://luacov.luaforge.net/)
           --load=<file>     Load a Lua file before executing command
           --name=<pattern>  Only run tests whose name matches a Lua string pattern
-          --shake           Use shake as the front-end for tests
 
   Callback options:
     --after=<function>        Run function given after each test
@@ -179,35 +173,6 @@ Options:
 
     tsc --after="function(t) print(t.status_label, t.name, t.context) end" example.lua
 
-An example test:
-
-context("A context", function()
-  before(function() end)
-  after(function() end)
-  context("A nested context", function()
-    test("A test", function()
-      assert_not_equal("ham", "cheese")
-    end)
-    context("Another nested context", function()
-      test("Another test", function()
-        assert_greater_than(2, 1)
-      end)
-    end)
-  end)
-  test("A test in the top-level context", function()
-    assert_equal(1, 1)
-  end)
-end)
-
-Project home:
-  http://telescope.luaforge.net/
-
-License:
-  MIT/X11 (Same as Lua)
-
-Author:
-  Norman Clarke <norman@njclarke.com>. Please feel free to email bug
-  reports, feedback and feature requests.
 ]]
   print(text)
 end
@@ -223,7 +188,7 @@ local function add_callback(callback, func)
   end
 end
 
-local function process_args()
+local function process_args(arg)
   local files = {}
   local opts = getopt(arg, "")
   local i = 1
@@ -231,74 +196,69 @@ local function process_args()
   while i <= #arg do table.insert(files, arg[i]) ; i = i + 1 end
   return opts, files
 end
-local opts, files = process_args()
-if opts["h"] or opts["?"] or opts["help"] or not (next(opts) or next(files)) then
-  show_usage()
-  os.exit()
-end
 
-if opts.v or opts.version then
-  print(telescope.version)
-  os.exit(0)
-end
-
-if opts.c or opts.luacov then
-  require "luacov.tick"
-end
-
--- load a file with custom functionality if desired
-if opts["load"] then dofile(opts["load"]) end
-
-local test_pattern
-if opts["name"] then
-  test_pattern = function(t) return t.name:match(opts["name"]) end
-end
-
--- set callbacks passed on command line
-local callback_args = { "after", "before", "err", "fail", "pass",
-  "pending", "unassertive" }
-for _, callback in ipairs(callback_args) do
-  if opts[callback] then
-    add_callback(callback, loadstring(opts[callback])())
+return function(ctx)
+  local opts, files = process_args(ctx.arg)
+  if opts["h"] or opts["?"] or opts["help"] or not (next(opts) or next(files)) then
+    show_usage()
+    return
   end
-end
 
-local contexts = {}
-if opts["shake"] then
-  for _, file in ipairs(files) do shake.load_contexts(file, contexts) end
-else
-  for _, file in ipairs(files) do telescope.load_contexts(file, contexts) end
-end
+  if opts.v or opts.version then
+    print(telescope.version)
+    return
+  end
 
-local buffer = {}
-local results = telescope.run(contexts, callbacks, test_pattern)
-local summary, data = telescope.summary_report(contexts, results)
+  -- load a file with custom functionality if desired
+  if opts["load"] then dofile(opts["load"]) end
 
-if opts.f or opts.full then
-  table.insert(buffer, telescope.test_report(contexts, results))
-end
+  local test_pattern
+  if opts["name"] then
+    test_pattern = function(t) return t.name:match(opts["name"]) end
+  end
 
-if not opts.s and not opts.silent then
-  table.insert(buffer, summary)
-  if not opts.q and not opts.quiet then
-    local report = telescope.error_report(contexts, results)
-    if report then
-      table.insert(buffer, "")
-      table.insert(buffer, report)
+  -- set callbacks passed on command line
+  local callback_args = { "after", "before", "err", "fail", "pass",
+    "pending", "unassertive" }
+  for _, callback in ipairs(callback_args) do
+    if opts[callback] then
+      add_callback(callback, loadstring(opts[callback])())
     end
   end
-end
 
-if #buffer > 0 then print(table.concat(buffer, "\n")) end
+  local contexts = {}
+  for _, file in ipairs(files) do telescope.load_contexts(file, contexts) end
 
-if opts.c or opts.coverage then
-  luacov_report()
-  os.remove("luacov.stats.out")
-end
+  local buffer = {}
+  local results = telescope.run(contexts, callbacks, test_pattern)
+  local summary, data = telescope.summary_report(contexts, results)
 
-for _, v in pairs(results) do
-  if v.status_code == telescope.status_codes.err or
-    v.status_code == telescope.status_codes.fail then
-    os.exit(1)
+  if opts.f or opts.full then
+    table.insert(buffer, telescope.test_report(contexts, results))
+  end
+
+  if not opts.s and not opts.silent then
+    table.insert(buffer, summary)
+    if not opts.q and not opts.quiet then
+      local report = telescope.error_report(contexts, results)
+      if report then
+        table.insert(buffer, "")
+        table.insert(buffer, report)
+      end
+    end
+  end
+
+  if #buffer > 0 then print(table.concat(buffer, "\n")) end
+
+  if opts.c or opts.coverage then
+    luacov_report()
+    os.remove("luacov.stats.out")
+  end
+
+  for _, v in pairs(results) do
+    if v.status_code == telescope.status_codes.err or
+      v.status_code == telescope.status_codes.fail then
+      return
+    end
   end
 end

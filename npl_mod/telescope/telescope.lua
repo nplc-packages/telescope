@@ -7,7 +7,7 @@
 -- @module 'telescope'
 local _M = {}
 
-local compat_env = require 'telescope.compat_env'
+local compat_env = NPL.load("compat_env")
 
 local getfenv = _G.getfenv or compat_env.getfenv
 local setfenv = _G.setfenv or compat_env.setfenv
@@ -155,7 +155,7 @@ local function make_assertion(name, message, func)
       local a = {}
       local args = {...}
       local nargs = select('#', ...)
-      if nargs > num_vars then        
+      if nargs > num_vars then
         local userErrorMessage = args[num_vars+1]
         if type(userErrorMessage) == "string" then
           return(assertion_message_prefix .. userErrorMessage)
@@ -443,12 +443,12 @@ local function run(contexts, callbacks, test_filter)
     table.sort(ancestors)
     -- this "before" is the test callback passed into the runner
     invoke_callback("before", result)
-    
+
     -- run all the "before" blocks/functions
     for _, a in ipairs(ancestors) do
-      if contexts[a].before then 
+      if contexts[a].before then
         setfenv(contexts[a].before, env)
-        contexts[a].before() 
+        contexts[a].before()
       end
     end
 
@@ -465,9 +465,9 @@ local function run(contexts, callbacks, test_filter)
     -- Run all the "after" blocks/functions
     table.reverse(ancestors)
     for _, a in ipairs(ancestors) do
-      if contexts[a].after then 
+      if contexts[a].after then
         setfenv(contexts[a].after, env)
-        contexts[a].after() 
+        contexts[a].after()
       end
     end
 
