@@ -8,11 +8,11 @@ SYNOPSIS
   local CL = pcall(load, '') and _G or require 'compat_env'
   local load     = CL.load
   local loadfile = CL.loadfile
-  
+
   -- The following now works in both Lua 5.1 and 5.2:
   assert(load('return 2*pi', nil, 't', {pi=math.pi}))()
   assert(loadfile('ex.lua', 't', {print=print}))()
-  
+
   -- Get getfenv/setfenv compatibility functions only if using 5.2.
   local getfenv = _G.getfenv or require 'compat_env'.getfenv
   local setfenv = _G.setfenv or require 'compat_env'.setfenv
@@ -26,23 +26,23 @@ DESCRIPTION
   This includes implementations of Lua 5.2 style `load` and `loadfile`
   for use in Lua 5.1.  It also includes Lua 5.1 style `getfenv` and `setfenv`
   for use in Lua 5.2.
- 
+
 API
 
   local CL = require 'compat_env'
-  
+
   CL.load (ld [, source [, mode [, env] ] ]) --> f [, err]
 
     This behaves the same as the Lua 5.2 `load` in both
     Lua 5.1 and 5.2.
     http://www.lua.org/manual/5.2/manual.html#pdf-load
-    
+
   CL.loadfile ([filename [, mode [, env] ] ]) --> f [, err]
-  
+
     This behaves the same as the Lua 5.2 `loadfile` in both
     Lua 5.1 and 5.2.
     http://www.lua.org/manual/5.2/manual.html#pdf-loadfile
-    
+
   CL.getfenv ([f]) --> t
 
     This is identical to the Lua 5.1 `getfenv` in Lua 5.1.
@@ -55,9 +55,9 @@ API
     debug info.  It is not normally considered good design to use
     this function; when possible, use `load` or `loadfile` instead.
     http://www.lua.org/manual/5.1/manual.html#pdf-getfenv
-    
+
   CL.setfenv (f, t)
-  
+
     This is identical to the Lua 5.1 `setfenv` in Lua 5.1.
     This behaves similar to the Lua 5.1 `setfenv` in Lua 5.2.
     This will do nothing if `f` is a Lua function that
@@ -66,7 +66,7 @@ API
     It is not normally considered good design to use
     this function; when possible, use `load` or `loadfile` instead.
     http://www.lua.org/manual/5.1/manual.html#pdf-setfenv
-    
+
 DESIGN NOTES
 
   This module intends to provide robust and fairly complete reimplementations
@@ -75,7 +75,7 @@ DESIGN NOTES
   such as thread environments, although this is liable to change in the future.
   Such 5.1 capabilities are discouraged and ideally
   removed from 5.1 code, thereby allowing your code to work in both 5.1 and 5.2.
-  
+
   In Lua 5.2, a `setfenv(f, {})`, where `f` lacks any upvalues, will be silently
   ignored since there is no `_ENV` in this function to write to, and the
   environment will have no effect inside the function anyway.  However,
@@ -84,12 +84,12 @@ DESIGN NOTES
   If `setfenv(f, {})` has an upvalue but no debug info, then this will raise
   an error to prevent inadvertently executing potentially untrusted code in the
   global environment.
-  
+
   It is not normally considered good design to use `setfenv` and `getfenv`
   (one reason they were removed in 5.2).  When possible, consider replacing
   these with `load` or `loadfile`, which are more restrictive and have native
   implementations in 5.2.
-  
+
   This module might be merged into a more general Lua 5.1/5.2 compatibility
   library (e.g. a full reimplementation of Lua 5.2 `_G`).  However,
   `load/loadfile/getfenv/setfenv` perhaps are among the more cumbersome
@@ -98,13 +98,13 @@ DESIGN NOTES
 INSTALLATION
 
   Download compat_env.lua:
-  
+
     wget https://raw.github.com/gist/1654007/compat_env.lua
 
   Copy compat_env.lua into your LUA_PATH.
-  
+
   Alternately, unpack, test, and install into LuaRocks:
-  
+
      wget https://raw.github.com/gist/1422205/sourceunpack.lua
      lua sourceunpack.lua compat_env.lua
      (cd out && luarocks make)
@@ -116,7 +116,7 @@ Related work
     - penlight implementations of getfenv/setfenv
   http://lua-users.org/lists/lua-l/2010-06/msg00313.html
     - initial getfenv/setfenv implementation
-    
+
 References
 
   [1] http://lua-users.org/lists/lua-l/2010-06/msg00315.html
@@ -143,136 +143,187 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
---]]---------------------------------------------------------------------
+--]] ---------------------------------------------------------------------
 
-local M = {_TYPE='module', _NAME='compat_env', _VERSION='0.2.20120124'}
+local M = {_TYPE = "module", _NAME = "compat_env", _VERSION = "0.2.20120124"}
 
 local function check_chunk_type(s, mode)
-  local nmode = mode or 'bt' 
-  local is_binary = s and #s > 0 and s:byte(1) == 27
-  if is_binary and not nmode:match'b' then
-    return nil, ("attempt to load a binary chunk (mode is '%s')"):format(mode)
-  elseif not is_binary and not nmode:match't' then
-    return nil, ("attempt to load a text chunk (mode is '%s')"):format(mode)
-  end
-  return true
+    local nmode = mode or "bt"
+    local is_binary = s and #s > 0 and s:byte(1) == 27
+    if is_binary and not nmode:match "b" then
+        return nil, ("attempt to load a binary chunk (mode is '%s')"):format(mode)
+    elseif not is_binary and not nmode:match "t" then
+        return nil, ("attempt to load a text chunk (mode is '%s')"):format(mode)
+    end
+    return true
 end
 
-local IS_52_LOAD = pcall(load, '')
+local IS_52_LOAD = pcall(load, "")
 if IS_52_LOAD then
-  M.load     = _G.load
-  M.loadfile = _G.loadfile
+    M.load = _G.load
+    M.loadfile = _G.loadfile
 else
-  -- 5.2 style `load` implemented in 5.1
-  function M.load(ld, source, mode, env)
-    local f
-    if type(ld) == 'string' then
-      local s = ld
-      local ok, err = check_chunk_type(s, mode); if not ok then return ok, err end
-      local err; f, err = loadstring(s, source); if not f then return f, err end
-    elseif type(ld) == 'function' then
-      local ld2 = ld
-      if (mode or 'bt') ~= 'bt' then
-        local first = ld()
-        local ok, err = check_chunk_type(first, mode); if not ok then return ok, err end
-        ld2 = function()
-          if first then
-            local chunk=first; first=nil; return chunk
-          else return ld() end
+    -- 5.2 style `load` implemented in 5.1
+    function M.load(ld, source, mode, env)
+        local f
+        if type(ld) == "string" then
+            local s = ld
+            local ok, err = check_chunk_type(s, mode)
+            if not ok then
+                return ok, err
+            end
+            local err
+            f, err = loadstring(s, source)
+            if not f then
+                return f, err
+            end
+        elseif type(ld) == "function" then
+            local ld2 = ld
+            if (mode or "bt") ~= "bt" then
+                local first = ld()
+                local ok, err = check_chunk_type(first, mode)
+                if not ok then
+                    return ok, err
+                end
+                ld2 = function()
+                    if first then
+                        local chunk = first
+                        first = nil
+                        return chunk
+                    else
+                        return ld()
+                    end
+                end
+            end
+            local err
+            f, err = load(ld2, source)
+            if not f then
+                return f, err
+            end
+        else
+            error(("bad argument #1 to 'load' (function expected, got %s)"):format(type(ld)), 2)
         end
-      end
-      local err; f, err = load(ld2, source); if not f then return f, err end
-    else
-      error(("bad argument #1 to 'load' (function expected, got %s)"):format(type(ld)), 2)
+        if env then
+            setfenv(f, env)
+        end
+        return f
     end
-    if env then setfenv(f, env) end
-    return f
-  end
 
-  -- 5.2 style `loadfile` implemented in 5.1
-  function M.loadfile(filename, mode, env)
-    if (mode or 'bt') ~= 'bt' then
-      local ioerr
-      local fh, err = io.open(filename, 'rb'); if not fh then return fh, err end
-      local function ld() local chunk; chunk,ioerr = fh:read(4096); return chunk end
-      local f, err = M.load(ld, filename and '@'..filename, mode, env)
-      fh:close()
-      if not f then return f, err end
-      if ioerr then return nil, ioerr end
-      return f
-    else
-      local f, err = loadfile(filename); if not f then return f, err end
-      if env then setfenv(f, env) end
-      return f
+    -- 5.2 style `loadfile` implemented in 5.1
+    function M.loadfile(filename, mode, env)
+        if (mode or "bt") ~= "bt" then
+            local ioerr
+            local fh, err = io.open(filename, "rb")
+            if not fh then
+                return fh, err
+            end
+            local function ld()
+                local chunk
+                chunk, ioerr = fh:read(4096)
+                return chunk
+            end
+            local f, err = M.load(ld, filename and "@" .. filename, mode, env)
+            fh:close()
+            if not f then
+                return f, err
+            end
+            if ioerr then
+                return nil, ioerr
+            end
+            return f
+        else
+            local f, err = loadfile(filename)
+            if not f then
+                return f, err
+            end
+            if env then
+                setfenv(f, env)
+            end
+            return f
+        end
     end
-  end
 end
 
 if _G.setfenv then -- Lua 5.1
-  M.setfenv = _G.setfenv
-  M.getfenv = _G.getfenv
+    M.setfenv = _G.setfenv
+    M.getfenv = _G.getfenv
 else -- >= Lua 5.2
-  -- helper function for `getfenv`/`setfenv`
-  local function envlookup(f)
-    local name, val
-    local up = 0
-    local unknown
-    repeat
-      up=up+1; name, val = debug.getupvalue(f, up)
-      if name == '' then unknown = true end
-    until name == '_ENV' or name == nil
-    if name ~= '_ENV' then
-      up = nil
-      if unknown then error("upvalues not readable in Lua 5.2 when debug info missing", 3) end
+    -- [**] possible reasons: no _ENV upvalue, C function
+    -- helper function for `getfenv`/`setfenv`
+    local function envlookup(f)
+        local name, val
+        local up = 0
+        local unknown
+        repeat
+            up = up + 1
+            name, val = debug.getupvalue(f, up)
+            if name == "" then
+                unknown = true
+            end
+        until name == "_ENV" or name == nil
+        if name ~= "_ENV" then
+            up = nil
+            if unknown then
+                error("upvalues not readable in Lua 5.2 when debug info missing", 3)
+            end
+        end
+        return (name == "_ENV") and up, val, unknown
     end
-    return (name == '_ENV') and up, val, unknown
-  end
 
-  -- helper function for `getfenv`/`setfenv`
-  local function envhelper(f, name)
-    if type(f) == 'number' then
-      if f < 0 then
-        error(("bad argument #1 to '%s' (level must be non-negative)"):format(name), 3)
-      elseif f < 1 then
-        error("thread environments unsupported in Lua 5.2", 3) --[*]
-      end
-      f = debug.getinfo(f+2, 'f').func
-    elseif type(f) ~= 'function' then
-      error(("bad argument #1 to '%s' (number expected, got %s)"):format(type(name, f)), 2)
+    -- helper function for `getfenv`/`setfenv`
+    local function envhelper(f, name)
+        if type(f) == "number" then
+            if f < 0 then
+                error(("bad argument #1 to '%s' (level must be non-negative)"):format(name), 3)
+            elseif f < 1 then
+                error("thread environments unsupported in Lua 5.2", 3) --[*]
+            end
+            f = debug.getinfo(f + 2, "f").func
+        elseif type(f) ~= "function" then
+            error(("bad argument #1 to '%s' (number expected, got %s)"):format(type(name, f)), 2)
+        end
+        return f
     end
-    return f
-  end
-  -- [*] might simulate with table keyed by coroutine.running()
-  
-  -- 5.1 style `setfenv` implemented in 5.2
-  function M.setfenv(f, t)
-    local f = envhelper(f, 'setfenv')
-    local up, val, unknown = envlookup(f)
-    if up then
-      debug.upvaluejoin(f, up, function() return up end, 1) -- unique upvalue [*]
-      debug.setupvalue(f, up, t)
-    else
-      local what = debug.getinfo(f, 'S').what
-      if what ~= 'Lua' and what ~= 'main' then -- not Lua func
-        error("'setfenv' cannot change environment of given object", 2)
-      end -- else ignore no _ENV upvalue (warning: incompatible with 5.1)
-    end
-    -- added in https://gist.github.com/2255007
-    return f
-  end
-  -- [*] http://lua-users.org/lists/lua-l/2010-06/msg00313.html
+    -- [*] might simulate with table keyed by coroutine.running()
 
-  -- 5.1 style `getfenv` implemented in 5.2
-  function M.getfenv(f)
-    if f == 0 or f == nil then return _G end -- simulated behavior
-    local f = envhelper(f, 'setfenv')
-    local up, val = envlookup(f)
-    if not up then return _G end -- simulated behavior [**]
-    return val
-  end
-  -- [**] possible reasons: no _ENV upvalue, C function
+    -- 5.1 style `setfenv` implemented in 5.2
+    function M.setfenv(f, t)
+        local f = envhelper(f, "setfenv")
+        local up, val, unknown = envlookup(f)
+        if up then
+            debug.upvaluejoin(
+                f,
+                up,
+                function()
+                    return up
+                end,
+                1
+            ) -- unique upvalue [*]
+            debug.setupvalue(f, up, t)
+        else
+            local what = debug.getinfo(f, "S").what
+            if what ~= "Lua" and what ~= "main" then -- not Lua func
+                error("'setfenv' cannot change environment of given object", 2)
+            end -- else ignore no _ENV upvalue (warning: incompatible with 5.1)
+        end
+        -- added in https://gist.github.com/2255007
+        return f
+    end
+    -- [*] http://lua-users.org/lists/lua-l/2010-06/msg00313.html
+
+    -- 5.1 style `getfenv` implemented in 5.2
+    function M.getfenv(f)
+        if f == 0 or f == nil then
+            return _G
+        end -- simulated behavior
+        local f = envhelper(f, "setfenv")
+        local up, val = envlookup(f)
+        if not up then
+            return _G
+        end -- simulated behavior [**]
+        return val
+    end
 end
-
 
 return M
 
@@ -306,7 +357,8 @@ build = {
   }
 }
 
---]]---------------------------------------------------------------------
+--]]
+ ---------------------------------------------------------------------
 
 --[[ FILE test.lua
 
@@ -379,7 +431,8 @@ x = nil
 
 print 'OK'
 
---]]---------------------------------------------------------------------
+--]]
+ ---------------------------------------------------------------------
 
 --[[ FILE CHANGES.txt
 0.2.20120124
