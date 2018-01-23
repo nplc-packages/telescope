@@ -226,6 +226,13 @@ local function add_callback(callback, func)
 end
 
 local function load_spec_files(files, basedir)
+    for _, pattern in ipairs(SPEC_FILE_PATTERNS) do
+        if (basedir:match(pattern)) then
+            print(basedir)
+            table.insert(files, basedir)
+            return
+        end
+    end
     for entry in lfs.dir(basedir) do
         if entry ~= "." and entry ~= ".." then
             local path = basedir .. "/" .. entry
@@ -255,8 +262,10 @@ local function process_args(arg)
     for _, _ in pairs(opts) do
         i = i + 1
     end
-    local basedir = lfs.currentdir() .. "/" .. arg[i]
-    load_spec_files(files, basedir)
+    for i = i, #arg do
+        local basedir = lfs.currentdir() .. "/" .. arg[i]
+        load_spec_files(files, basedir)
+    end
 
     return opts, files
 end
