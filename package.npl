@@ -1,0 +1,13 @@
+{
+      ["keywords"] = {
+        [1] = "telescope",
+        [2] = "unknow",
+      },
+      ["version"] = "1.0.0",
+      ["rendme"] = "README.md",
+      ["dependencies"] = {
+      },
+      ["author"] = "unknow",
+      ["name"] = "telescope",
+      ["description"] = "package description",
+    }
