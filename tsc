@@ -1,7 +1,4 @@
 #!/usr/bin/env nplc
-NPL.load_package("telescope")
-NPL.load_package("luacov")
-
 telescope = NPL.load("telescope")
 local SPEC_FILE_PATTERNS = {"_spec.lua$", "_spec.npl$"}
 local lfs = commonlib.Files.GetLuaFileSystem()

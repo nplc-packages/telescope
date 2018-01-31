@@ -1,7 +1,6 @@
 {
   ["keywords"] = {
     [1] = "telescope",
-    [2] = "unknow",
   },
   ["version"] = "1.0.0",
   ["rendme"] = "README.md",
@@ -10,7 +9,7 @@
       ["package_src"] = "leopoldchen/luacov"
     }
   },
-  ["author"] = "unknow",
+  ["author"] = "leopoldchen",
   ["name"] = "telescope",
   ["description"] = "package description",
 }
