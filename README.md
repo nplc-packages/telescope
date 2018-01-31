@@ -1,7 +1,7 @@
 # Telescope
 
 Telescope is a highly customizable test library for Lua that allows for
-declarative tests with nested contexts.
+declarative tests with nested contexts. Fork from http://norman.github.com/telescope
 
 ## Features
 
@@ -38,26 +38,19 @@ declarative tests with nested contexts.
 
 ## Getting it
 
-You can install Telescope using Luarocks:
+You can install Telescope using nplc:
 
-    sudo luarocks install telescope
-
-You can also check out the source code from Git, and  install via "make" if you
-prefer:
-
-    git clone git://github.com/norman/telescope.git
-    cd telescope
-    make install
+    nplc install telescope --version=1.0.0
 
 ## Running your tests
 
 Telescope comes with a command-line test runner named `tsc`. Simply run:
 
-    tsc my_test_file.lua
+    tsc test_spec.lua
 
 Or perhaps
 
-    tsc -f test/*.lua
+    tsc -f specs/
 
 The full test output (what you get using "-f") from the examples given would be:
 
