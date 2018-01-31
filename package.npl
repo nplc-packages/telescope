@@ -6,7 +6,8 @@
   ["rendme"] = "README.md",
   ["dependencies"] = {
     ["luacov"] = {
-      ["package_src"] = "leopoldchen/luacov"
+      ["package_src"] = "leopoldchen/luacov",
+      ["version"] = "1.0.0"
     }
   },
   ["author"] = "leopoldchen",
